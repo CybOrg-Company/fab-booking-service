@@ -1,0 +1,60 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow only on pushes to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18 # Use your desired Node.js version
+
+      # Step 3: Run tests
+      - name: Run tests
+        run: npm test
+
+      # Step 4: Deploy to AWS EC2
+      - name: Deploy to EC2
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_IP: ${{ secrets.EC2_IP }}
+          APP_NAME: "fab-booking-service"
+        run: |
+          # Set variables
+          REMOTE_DIR="/var/www/$APP_NAME"
+
+          # Provision EC2 instance
+          echo "Provisioning EC2 instance at $EC2_IP..."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@$EC2_IP << EOF
+            sudo apt-get update
+            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+            sudo npm install -g pm2
+            mkdir -p $REMOTE_DIR
+            sudo chown -R \$USER:\$USER $REMOTE_DIR
+          EOF
+
+          # Upload project files
+          echo "Uploading project files to EC2..."
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -r . ec2-user@$EC2_IP:$REMOTE_DIR
+
+          # Deploy application
+          echo "Deploying application on EC2..."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@$EC2_IP << EOF
+            cd $REMOTE_DIR
+            npm install
+            pm2 restart $APP_NAME || pm2 start app.js --name "$APP_NAME"
+          EOF
+
+          echo "Deployment to EC2 completed!"
