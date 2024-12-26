@@ -1,4 +1,4 @@
-# fab-booking-service
+# fab-acuity-mq
 
 A Node.js service for managing Acuity bookings, built with Docker support for seamless deployment in both development and production environments.
 
