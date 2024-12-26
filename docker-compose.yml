@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  development:
+    build:
+      context: .
+      args:
+        NODE_ENV: development
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3001:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  production:
+    build:
+      context: .
+      args:
+        NODE_ENV: production
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    command: ["npm", "run", "start"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
